@@ -40,15 +40,15 @@ void op_ntld(char* addr, long size){
     size = size - (size % MIN_GRANULARITY);
 
     asm volatile(
-            "mov %[addr], %%r9 \n"
-            "xor %%r10, %%r10 \n"
+            "mov %[addr], x9 \n"
+            "mov x10, #0 \n"
             "LOOP_NTLD: \n"
             SIZENTLD_MACRO	
-            "cmp %[size], %%r10 \n"
-            "jl LOOP_NTLD \n"
+            "cmp %[size], x10 \n"
+            "b.lt LOOP_NTLD \n"
             : /* output */
             :[size]"r"(size), [addr]"r"(addr) /* input */
-            :"%r9", "%r10" /* clobbered register */
+            :"x9", "x10" /* clobbered register */
             );
 }
 
@@ -70,15 +70,15 @@ void op_ld(char* addr, long size){
     size = size - (size % MIN_GRANULARITY);
 
     asm volatile(
-            "mov %[addr], %%r9 \n"
-            "xor %%r10, %%r10 \n"
+            "mov %[addr], x9 \n"
+            "mov x10, #0 \n"
             "LOOP_LD: \n"
             SIZELD_MACRO	
-            "cmp %[size], %%r10 \n"
-            "jl LOOP_LD \n"
+            "cmp %[size], x10 \n"
+            "b.lt LOOP_LD \n"
             : /* output */
             :[size]"r"(size), [addr]"r"(addr) /* input */
-            :"%r9", "%r10", ZMM_0_15 /* clobbered register */
+            :"x9", "x10", ZMM_0_15 /* clobbered register */
             );
 }
 
@@ -100,16 +100,16 @@ void op_ntst(char* addr, long size){
     size = size - (size % MIN_GRANULARITY);
 
     asm volatile(
-            "mov %[addr], %%r9 \n"
-            "xor %%r10, %%r10 \n"
+            "mov %[addr], x9 \n"
+            "mov x10, #0 \n"
             "LOOP_NTST: \n"
             SIZENTST_1024_AVX512
-            "cmp %[size], %%r10 \n"
-            "jl LOOP_NTST \n"
-            "sfence \n"
+            "cmp %[size], x10 \n"
+            "b.lt LOOP_NTST \n"
+            "dsb sy \n"
             : /* output */
             :[size]"r"(size), [addr]"r"(addr) /* input */
-            :"%r9", "%r10", ZMM_0_15 /* clobbered register */
+            :"x9", "x10", ZMM_0_15 /* clobbered register */
             );
 }
 
@@ -131,15 +131,15 @@ void op_st(char* addr, long size){
     size = size - (size % MIN_GRANULARITY);
 
     asm volatile(
-            "mov %[addr], %%r9 \n"
-            "xor %%r10, %%r10 \n"
+            "mov %[addr], x9 \n"
+            "mov x10, #0 \n"
             "LOOP_ST: \n"
             SIZEST_MACRO
-            "cmp %[size], %%r10 \n"
-            "jl LOOP_ST \n"
+            "cmp %[size], x10 \n"
+            "b.lt LOOP_ST \n"
             : /* output */
             :[size]"r"(size), [addr]"r"(addr) /* input */
-            :REGISTERS, "%r10" /* clobbered register */
+            :REGISTERS, "x10" /* clobbered register */
             );
 }
 
@@ -165,43 +165,43 @@ void op_mixed(char* addr, long size, int ratio){
     {
         case 1:  // 1R:1W
             asm volatile(
-                    "mov %[addr], %%r9 \n"
-                    "xor %%r10, %%r10 \n"
+                    "mov %[addr], x9 \n"
+                    "mov x10, #0 \n"
                     "LOOP_MIXED1: \n"
                     SIZE_R1W1_512
-                    "cmp %[size], %%r10 \n"
-                    "jl LOOP_MIXED1 \n"
+                    "cmp %[size], x10 \n"
+                    "b.lt LOOP_MIXED1 \n"
                     : /* output */
                     :[size]"r"(size), [addr]"r"(addr) /* input */
-                    :REGISTERS, "%r10" /* clobbered register */
+                    :REGISTERS, "x10" /* clobbered register */
                     );
             break;
 
         case 2:  // 2R:1W
             asm volatile(
-                    "mov %[addr], %%r9 \n"
-                    "xor %%r10, %%r10 \n"
+                    "mov %[addr], x9 \n"
+                    "mov x10, #0 \n"
                     "LOOP_MIXED2: \n"
                     // SIZE_R2W1_384
                     SIZE_R2W1_576
-                    "cmp %[size], %%r10 \n"
-                    "jl LOOP_MIXED2 \n"
+                    "cmp %[size], x10 \n"
+                    "b.lt LOOP_MIXED2 \n"
                     : /* output */
                     :[size]"r"(size), [addr]"r"(addr) /* input */
-                    :REGISTERS, "%r10" /* clobbered register */
+                    :REGISTERS, "x10" /* clobbered register */
                     );
             break;
         case 3: // 3R:1W
             asm volatile(
-                    "mov %[addr], %%r9 \n"
-                    "xor %%r10, %%r10 \n"
+                    "mov %[addr], x9 \n"
+                    "mov x10, #0 \n"
                     "LOOP_MIXED3: \n"
                     SIZE_R3W1_512
-                    "cmp %[size], %%r10 \n"
-                    "jl LOOP_MIXED3 \n"
+                    "cmp %[size], x10 \n"
+                    "b.lt LOOP_MIXED3 \n"
                     : /* output */
                     :[size]"r"(size), [addr]"r"(addr) /* input */
-                    :REGISTERS, "%r10" /* clobbered register */
+                    :REGISTERS, "x10" /* clobbered register */
                     );
             break;
 
@@ -249,17 +249,17 @@ void op_movdir64B(char* src_addr, char* dst_addr, long size) {
     /* round down to MIN_GRANULARITY */
     size = size - (size % MIN_GRANULARITY);
     asm volatile(
-            "mov %[src_addr], %%r9 \n"
-            "mov %[dst_addr], %%r12 \n"
-            "xor %%r10, %%r10 \n"
+            "mov %[src_addr], x9 \n"
+            "mov %[dst_addr], x12 \n"
+            "mov x10, #0 \n"
             "LOOP_MOV: \n"
             SIZEMOV_MACRO
-            "cmp %[size], %%r10 \n"
-            "jl LOOP_MOV \n"
-            "sfence \n"
+            "cmp %[size], x10 \n"
+            "b.lt LOOP_MOV \n"
+            "dsb sy \n"
             : /* output */
             :[size]"r"(size), [src_addr]"r"(src_addr), [dst_addr]"r"(dst_addr)/* input */
-            :REGISTERS, "%r10", "%r11", "%r12" /* clobbered register */
+            :REGISTERS, "x10", "x11", "x12" /* clobbered register */
             );
 }
 
@@ -276,11 +276,11 @@ uint64_t op_ntld_32B_lat(char* addr){
     addr = (char*)((uint64_t)addr & (~0x1F));
 
     asm volatile(
-            "mov %[addr], %%rsi\n"
-            "mfence\n"
+            "mov %[addr], x9\n"
+            "dsb sy\n"
             FLUSH_CACHE_LINE
             TIMING_BEGIN
-            "vmovntdqa 0*32(%%rsi), %%ymm0 \n"
+            "ldnp q0, [x9] \n"
             TIMING_END
             :[t_start] "=r" (t_start), [t_end] "=r" (t_end)
             :[addr] "r" (addr)
@@ -303,12 +303,12 @@ uint64_t op_ntld_64B_lat(char* addr){
     addr = (char*)((uint64_t)addr & (~0x3F));
 
     asm volatile(
-            "mov %[addr], %%rsi\n"
-            "mfence\n"
+            "mov %[addr], x9\n"
+            "dsb sy\n"
             FLUSH_CACHE_LINE
             TIMING_BEGIN
-            "vmovntdqa 0*32(%%rsi), %%ymm0 \n"
-            "vmovntdqa 1*32(%%rsi), %%ymm1 \n"
+            "ldnp q0, [x9] \n"
+            "ldnp q1, [x9, #32] \n"
             TIMING_END
             :[t_start] "=r" (t_start), [t_end] "=r" (t_end)
             :[addr] "r" (addr)
@@ -332,13 +332,13 @@ uint64_t op_ntst_64B_lat(char* addr){
     addr = (char*)((uint64_t)addr & (~0x3F));
 
     asm volatile(
-            "mov %[addr], %%rsi\n"
-            "mfence\n"
+            "mov %[addr], x9\n"
+            "dsb sy\n"
             FLUSH_CACHE_LINE
             CLEAR_PIPELINE
             TIMING_BEGIN
-            "vmovntpd %%ymm0, 0*32(%%rsi) \n"
-            "vmovntpd %%ymm1, 1*32(%%rsi) \n"
+            "stnp q0, [x9] \n"
+            "stnp q1, [x9, #32] \n"
 
             TIMING_END
             :[t_start] "=r" (t_start), [t_end] "=r" (t_end)
@@ -362,13 +362,12 @@ uint64_t op_ld_64B_lat(char* addr){
     addr = (char*)((uint64_t)addr & (~0x3F));
 
     asm volatile(
-            "mov %[addr], %%rsi\n"
-            "mfence\n"
+            "mov %[addr], x9\n"
+            "dsb sy\n"
             FLUSH_CACHE_LINE
             CLEAR_PIPELINE
             TIMING_BEGIN
-            "vmovdqa 0*32(%%rsi), %%ymm0 \n"
-            "vmovdqa 1*32(%%rsi), %%ymm1 \n"
+            "ldp q0, q1, [x9] \n"
             TIMING_END
             :[t_start] "=r" (t_start), [t_end] "=r" (t_end)
             :[addr] "r" (addr)
@@ -391,14 +390,12 @@ uint64_t op_st_64B_lat(char* addr){
     addr = (char*)((uint64_t)addr & (~0x3F));
 
     asm volatile(
-            "mov %[addr], %%rsi\n"
-            "mfence\n"
+            "mov %[addr], x9\n"
+            "dsb sy\n"
             FLUSH_CACHE_LINE
             CLEAR_PIPELINE
             TIMING_BEGIN
-            "vmovdqa %%ymm0, 0*32(%%rsi) \n"
-            "vmovdqa %%ymm0, 1*32(%%rsi) \n"
-            //"sfence \n"
+            "stp q0, q1, [x9] \n"
             TIMING_END
             :[t_start] "=r" (t_start), [t_end] "=r" (t_end)
             :[addr] "r" (addr)
@@ -421,13 +418,12 @@ uint64_t op_st_cl_flush_64B_lat(char* addr){
     addr = (char*)((uint64_t)addr & (~0x3F));
 
     asm volatile(
-            "mov %[addr], %%rsi\n"
-            "mfence\n"
+            "mov %[addr], x1\n"
+            "dsb sy\n"
             CLEAR_PIPELINE
             TIMING_BEGIN
-            "vmovdqa %%ymm0, 0*32(%%rsi) \n"
-            "vmovdqa %%ymm0, 1*32(%%rsi) \n"
-            "clwb 0*32(%%rsi) \n"
+            "stp q0, q0, [x1]\n"
+            "dc cvac, x1\n"
             TIMING_END
             :[t_start] "=r" (t_start), [t_end] "=r" (t_end)
             :[addr] "r" (addr)
@@ -449,11 +445,11 @@ uint64_t op_st_32B_lat(char* addr){
     addr = (char*)((uint64_t)addr & (~0x1F));
 
     asm volatile(
-            "mov %[addr], %%rsi\n"
-            "mfence\n"
+            "mov %[addr], x1\n"
+            "dsb sy\n"
             FLUSH_CACHE_LINE
             TIMING_BEGIN
-            "vmovdqa %%ymm0, 0*32(%%rsi) \n"
+            "stp q0, q0, [x1]\n"
             TIMING_END
             :[t_start] "=r" (t_start), [t_end] "=r" (t_end)
             :[addr] "r" (addr)
@@ -466,20 +462,20 @@ uint64_t op_st_32B_lat(char* addr){
 uint64_t op_ptr_chase(char* addr, uint64_t num_chase_block) {
     uint64_t t_start = 0, t_end = 0;
     asm volatile(
-            "mov %[addr], %%r11 \n"
-            "xor %%r10, %%r10 \n"
+            "mov %[addr], x11 \n"
+            "mov x10, #0 \n"
             TIMING_BEGIN
 
             "LOOP_CHASE: \n"
-            "mov (%%r11), %%r11 \n"
-            "inc %%r10 \n"
-            "cmp %[num_chase_block], %%r10 \n"
-            "jl LOOP_CHASE \n"
+            "ldr x11, [x11] \n"
+            "add x10, x10, #1 \n"
+            "cmp %[num_chase_block], x10 \n"
+            "b.lt LOOP_CHASE \n"
 
             TIMING_END
             :[t_start] "=r" (t_start), [t_end] "=r" (t_end)
             :[addr] "r" (addr), [num_chase_block] "r" (num_chase_block)
-            :REGISTERS, "%r10", "%r11"
+            :REGISTERS, "x10", "x11"
             );
     return (t_end - t_start);
 }
@@ -488,29 +484,29 @@ uint64_t op_stwb_block_lat(char* addr, bool flush_block, long num_clear_pipe) {
     uint64_t t_start = 0, t_end = 0;
     //assume 64KB buff
     asm volatile(
-            "mov %[addr], %%r11 \n"
-            "xor %%r10, %%r10 \n"
+            "mov %[addr], x11 \n"
+            "mov x10, #0 \n"
 
-            "cmp $0x0, %[flush_block] \n"
-            "je LOOP_BLOCK_STWB_FLUSH_DONE \n"
+            "cmp %[flush_block], #0 \n"
+            "beq LOOP_BLOCK_STWB_FLUSH_DONE \n"
             "LOOP_BLOCK_STWB_FLUSH: \n"
-                "clflush (%%r11, %%r10) \n"
-                "add $0x40, %%r10 \n"
-                "cmp $0x10000, %%r10 \n"
-                "jl LOOP_BLOCK_STWB_FLUSH \n"
-            "xor %%r10, %%r10 \n"
-            "mfence \n"
+                "dc cvac, x11 \n"
+                "add x11, x11, #0x40 \n"
+                "cmp x11, #0x10000 \n"
+                "b.lt LOOP_BLOCK_STWB_FLUSH \n"
+            "mov x10, #0 \n"
+            "dsb sy \n"
 
             "LOOP_BLOCK_STWB_FLUSH_DONE: \n"
 
-                "cmp %[num_clear_pipe], %%r10 \n"
-                "je LOOP_BLOCK_STWB_START \n"
+                "cmp %[num_clear_pipe], x10 \n"
+                "beq LOOP_BLOCK_STWB_START \n"
                 CLEAR_PIPELINE_x16
-                "add $0x1, %%r10 \n"
-                "jmp LOOP_BLOCK_STWB_FLUSH_DONE \n"
+                "add x10, x10, #1 \n"
+                "b LOOP_BLOCK_STWB_FLUSH_DONE \n"
 
             "LOOP_BLOCK_STWB_START: \n"
-            "xor %%r10, %%r10 \n"
+            "mov x10, #0 \n"
 
             // Test 
             TIMING_BEGIN
@@ -519,7 +515,7 @@ uint64_t op_stwb_block_lat(char* addr, bool flush_block, long num_clear_pipe) {
 
             :[t_start] "=r" (t_start), [t_end] "=r" (t_end)
             :[addr] "r" (addr), [flush_block] "r" (flush_block), [num_clear_pipe] "r" (num_clear_pipe)
-            :REGISTERS, "%r10", "%r11", ZMM_0_15
+            :REGISTERS, "x10", "x11", ZMM_0_15
     );
 
     return (t_end - t_start);
@@ -528,30 +524,30 @@ uint64_t op_stwb_block_lat(char* addr, bool flush_block, long num_clear_pipe) {
 uint64_t op_ld_block_lat(char* addr, bool flush_block, long num_clear_pipe) {
     uint64_t t_start = 0, t_end = 0;
     asm volatile(
-            "mov %[addr], %%r11 \n"
-            "xor %%r10, %%r10 \n"
+            "mov %[addr], x11 \n"
+            "mov x10, #0 \n"
 
             // flush data
-            "cmp $0x0, %[flush_block] \n"
-            "je LOOP_BLOCK_LD_FLUSH_DONE \n"
+            "cmp %[flush_block], #0 \n"
+            "beq LOOP_BLOCK_LD_FLUSH_DONE \n"
             "LOOP_BLOCK_LD_FLUSH: \n"
-                "clflush (%%r11, %%r10) \n"
-                "add $0x40, %%r10 \n"
-                "cmp $0x10000, %%r10 \n"
-                "jl LOOP_BLOCK_LD_FLUSH \n"
-            "xor %%r10, %%r10 \n"
-            "mfence \n"
+                "dc cvac, x11 \n"
+                "add x11, x11, #0x40 \n"
+                "cmp x11, #0x10000 \n"
+                "b.lt LOOP_BLOCK_LD_FLUSH \n"
+            "mov x10, #0 \n"
+            "dsb sy \n"
 
             "LOOP_BLOCK_LD_FLUSH_DONE: \n"
 
-                "cmp %[num_clear_pipe], %%r10 \n"
-                "je LOOP_BLOCK_LD_START \n"
+                "cmp %[num_clear_pipe], x10 \n"
+                "beq LOOP_BLOCK_LD_START \n"
                 CLEAR_PIPELINE_x16
-                "add $0x1, %%r10 \n"
-                "jmp LOOP_BLOCK_LD_FLUSH_DONE \n"
+                "add x10, x10, #1 \n"
+                "b LOOP_BLOCK_LD_FLUSH_DONE \n"
 
             "LOOP_BLOCK_LD_START: \n"
-            "xor %%r10, %%r10 \n"
+            "mov x10, #0 \n"
 
             // Test 
             TIMING_BEGIN
@@ -560,7 +556,7 @@ uint64_t op_ld_block_lat(char* addr, bool flush_block, long num_clear_pipe) {
 
             :[t_start] "=r" (t_start), [t_end] "=r" (t_end)
             :[addr] "r" (addr), [flush_block] "r" (flush_block), [num_clear_pipe] "r" (num_clear_pipe)
-            :REGISTERS, "%r10", "%r11", ZMM_0_15
+            :REGISTERS, "x10", "x11", ZMM_0_15
     );
     return (t_end - t_start);
 }
@@ -568,30 +564,30 @@ uint64_t op_ld_block_lat(char* addr, bool flush_block, long num_clear_pipe) {
 uint64_t op_ntld_block_lat(char* addr, bool flush_block, long num_clear_pipe) {
     uint64_t t_start = 0, t_end = 0;
     asm volatile(
-            "mov %[addr], %%r11 \n"
-            "xor %%r10, %%r10 \n"
+            "mov %[addr], x11 \n"
+            "mov x10, #0 \n"
 
             // flush data
-            "cmp $0x0, %[flush_block] \n"
-            "je LOOP_BLOCK_NTLD_FLUSH_DONE \n"
+            "cmp %[flush_block], #0 \n"
+            "beq LOOP_BLOCK_NTLD_FLUSH_DONE \n"
             "LOOP_BLOCK_NTLD_FLUSH: \n"
-                "clflush (%%r11, %%r10) \n"
-                "add $0x40, %%r10 \n"
-                "cmp $0x10000, %%r10 \n"
-                "jl LOOP_BLOCK_NTLD_FLUSH \n"
-            "xor %%r10, %%r10 \n"
-            "mfence \n"
+                "dc cvac, x11 \n"
+                "add x11, x11, #0x40 \n"
+                "cmp x11, #0x10000 \n"
+                "b.lt LOOP_BLOCK_NTLD_FLUSH \n"
+            "mov x10, #0 \n"
+            "dsb sy \n"
 
             "LOOP_BLOCK_NTLD_FLUSH_DONE: \n"
 
-                "cmp %[num_clear_pipe], %%r10 \n"
-                "je LOOP_BLOCK_NTLD_START \n"
+                "cmp %[num_clear_pipe], x10 \n"
+                "beq LOOP_BLOCK_NTLD_START \n"
                 CLEAR_PIPELINE_x16
-                "add $0x1, %%r10 \n"
-                "jmp LOOP_BLOCK_NTLD_FLUSH_DONE \n"
+                "add x10, x10, #1 \n"
+                "b LOOP_BLOCK_NTLD_FLUSH_DONE \n"
 
             "LOOP_BLOCK_NTLD_START: \n"
-            "xor %%r10, %%r10 \n"
+            "mov x10, #0 \n"
 
             // Test 
             TIMING_BEGIN
@@ -600,7 +596,7 @@ uint64_t op_ntld_block_lat(char* addr, bool flush_block, long num_clear_pipe) {
 
             :[t_start] "=r" (t_start), [t_end] "=r" (t_end)
             :[addr] "r" (addr), [flush_block] "r" (flush_block), [num_clear_pipe] "r" (num_clear_pipe)
-            :REGISTERS, "%r10", "%r11", ZMM_0_15
+            :REGISTERS, "x10", "x11", ZMM_0_15
     );
     return (t_end - t_start);
 }
@@ -608,53 +604,53 @@ uint64_t op_ntld_block_lat(char* addr, bool flush_block, long num_clear_pipe) {
 uint64_t op_ntst_block_lat(char* addr, bool flush_block, long num_clear_pipe) {
     uint64_t t_start = 0, t_end = 0;
     asm volatile(
-            "mov %[addr], %%r11 \n"
-            "xor %%r10, %%r10 \n"
+            "mov %[addr], x11 \n"
+            "mov x10, #0 \n"
 
             // flush data
-            "cmp $0x0, %[flush_block] \n"
-            "je LOOP_BLOCK_NTST_FLUSH_DONE \n"
+            "cmp %[flush_block], #0 \n"
+            "beq LOOP_BLOCK_NTST_FLUSH_DONE \n"
             "LOOP_BLOCK_NTST_FLUSH: \n"
-                "clflush (%%r11, %%r10) \n"
-                "add $0x40, %%r10 \n"
-                "cmp $0x10000, %%r10 \n"
-                "jl LOOP_BLOCK_NTST_FLUSH \n"
-            "xor %%r10, %%r10 \n"
-            "mfence \n"
+                "dc cvac, x11 \n"
+                "add x11, x11, #0x40 \n"
+                "cmp x11, #0x10000 \n"
+                "b.lt LOOP_BLOCK_NTST_FLUSH \n"
+            "mov x10, #0 \n"
+            "dsb sy \n"
 
             "LOOP_BLOCK_NTST_FLUSH_DONE: \n"
 
-                "cmp %[num_clear_pipe], %%r10 \n"
-                "je LOOP_BLOCK_NTST_START \n"
+                "cmp %[num_clear_pipe], x10 \n"
+                "beq LOOP_BLOCK_NTST_START \n"
                 CLEAR_PIPELINE_x16
-                "add $0x1, %%r10 \n"
-                "jmp LOOP_BLOCK_NTST_FLUSH_DONE \n"
+                "add x10, x10, #1 \n"
+                "b LOOP_BLOCK_NTST_FLUSH_DONE \n"
 
             "LOOP_BLOCK_NTST_START: \n"
-            "xor %%r10, %%r10 \n"
+            "mov x10, #0 \n"
 
             // Test 
             TIMING_BEGIN
             NTST_xN_RAND_AVX512
-            "sfence \n"
+            "dsb sy\n"
             TIMING_END
 
             :[t_start] "=r" (t_start), [t_end] "=r" (t_end)
             :[addr] "r" (addr), [flush_block] "r" (flush_block), [num_clear_pipe] "r" (num_clear_pipe)
-            :REGISTERS, "%r10", "%r11", ZMM_0_15
+            :REGISTERS, "x10", "x11", ZMM_0_15
     );
     return (t_end - t_start);
 }
 
 void set_all_zmm(char* addr) {
     asm volatile(
-        "mov %[addr], %%r9 \n"
-        "xor %%r10, %%r10 \n"
+        "mov %[addr], x9 \n"
+        "mov x10, #0 \n"
         SIZELD_MACRO	
-        "mfence\n"
+        "dsb sy\n"
         : /* output */
         :[addr]"r"(addr) /* input */
-        :"%r9", "%r10", REGISTERS, ZMM_0_15 /* clobbered register */
+        :"x9", "x10", REGISTERS, ZMM_0_15 /* clobbered register */
     );
 }
 
@@ -665,13 +661,13 @@ void dump_zmm(char* dst, uint64_t size) {
         data_buf[i] = 0;
     }
     asm volatile(
-        "mov %[addr], %%r9 \n"
-        "xor %%r10, %%r10 \n"
+        "mov %[addr], x9 \n"
+        "mov x10, #0 \n"
         SIZEST_MACRO
-        "mfence\n"
+        "dsb sy\n"
         : /* output */
         :[addr]"r"(data_buf) /* input */
-        :"%r9", "%r10", REGISTERS, ZMM_0_15 /* clobbered register */
+        :"x9", "x10", REGISTERS, ZMM_0_15 /* clobbered register */
     );
     for (int i = 0; i < 1024; i++) {
         if (i % 64 == 0) {
@@ -688,3 +684,4 @@ void dump_zmm(char* dst, uint64_t size) {
     }
     free(data_buf);
 }
+
